@@ -1,0 +1,7 @@
+*.mov
+*.webm
+video-scenes/
+__pycache__/
+*.pyc
+# allow scroll-world master video
+!scroll-world/assets/clips/*.mp4

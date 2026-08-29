@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NABeauty3D Scroll World</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { font-family: 'Segoe UI', sans-serif; background: #0f0f0f; color: #fff; }
+
+  .scroll-container {
+    position: relative;
+    height: 900vh; /* long scroll track */
+  }
+
+  .viewport {
+    position: sticky;
+    top: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #0f0f0f;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.9s cubic-bezier(0.4, 0, 0.2, 1), transform 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: scale(1.05);
+  }
+
+  .slide.active {
+    opacity: 1;
+    transform: scale(1);
+    z-index: 2;
+  }
+
+  .slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+  }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.35) 100%);
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  .scene-text {
+    position: absolute;
+    bottom: 12%;
+    left: 6%;
+    max-width: 520px;
+    z-index: 4;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+
+  .scene-text.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .scene-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #c8e6c9;
+    margin-bottom: 0.5rem;
+  }
+
+  .scene-title {
+    font-size: clamp(2rem, 5vw, 4rem);
+    font-weight: 300;
+    line-height: 1.1;
+    margin-bottom: 1rem;
+  }
+
+  .scene-desc {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: rgba(255,255,255,0.85);
+  }
+
+  .progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 4px;
+    background: #c8e6c9;
+    width: 0%;
+    z-index: 10;
+  }
+
+  .cta-final {
+    position: absolute;
+    bottom: 15%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 5;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.8s ease;
+    pointer-events: none;
+  }
+
+  .cta-final.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .cta-final h2 {
+    font-size: clamp(1.5rem, 4vw, 3rem);
+    font-weight: 300;
+    margin-bottom: 1.5rem;
+  }
+
+  .cta-final a {
+    display: inline-block;
+    padding: 1rem 2.5rem;
+    background: #c8e6c9;
+    color: #0f0f0f;
+    text-decoration: none;
+    border-radius: 50px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+
+  .cta-final a:hover {
+    transform: scale(1.05);
+    background: #fff;
+  }
+
+  @media (max-width: 768px) {
+    .scene-text { left: 5%; right: 5%; max-width: none; bottom: 10%; }
+    .scene-title { font-size: 2rem; }
+  }
+</style>
+</head>
+<body>
+  <div class="progress-bar" id="progressBar"></div>
+
+  <div class="scroll-container" id="scrollContainer">
+    <div class="viewport" id="viewport">
+      <div id="slides"></div>
+      <div class="overlay"></div>
+      <div class="scene-text" id="sceneText">
+        <div class="scene-label" id="sceneLabel"></div>
+        <h1 class="scene-title" id="sceneTitle"></h1>
+        <p class="scene-desc" id="sceneDesc"></p>
+      </div>
+      <div class="cta-final" id="ctaFinal">
+        <h2>Experience NABeauty</h2>
+        <a href="#">Book Your Visit</a>
+      </div>
+    </div>
+  </div>
+
+<script>
+const scenes = [
+  { folder: 'NA Beauty Branding', file: 'page-029.png', label: '01 / Brand Arrival', title: 'NABeauty', desc: 'Your journey begins at the facade of the new beauty & wellness destination.' },
+  { folder: 'NA Beauty Branding', file: 'page-033.png', label: '01 / Brand Arrival', title: 'A New Destination', desc: 'An entrance designed to feel calm, premium, and welcoming.' },
+  { folder: 'NA Beauty Branding', file: 'page-005.png', label: '01 / Brand Arrival', title: 'Pure Form', desc: 'The identity of NABeauty — refined, minimal, and intentional.' },
+  { folder: 'NA Beauty Branding', file: 'page-003.png', label: '01 / Brand Arrival', title: 'Beauty', desc: 'A brand built on simplicity and elegance.' },
+
+  { folder: 'NA Beauty Branding', file: 'page-031.png', label: '02 / Reception', title: 'Welcome', desc: 'Step inside to a reception that sets the tone for the entire experience.' },
+  { folder: 'Ground Floor', file: 'page-003.png', label: '02 / Reception', title: 'The Salon Entrance', desc: 'Soft light, natural materials, and a sense of arrival.' },
+  { folder: 'Ground Floor', file: 'page-005.png', label: '02 / Reception', title: 'Reception Desk', desc: 'Marble, gold accents, and a detail-oriented first impression.' },
+
+  { folder: 'Ground Floor', file: 'page-008.png', label: '03 / Lounge', title: 'Relax', desc: 'A waiting lounge designed as a transition between the city and the salon.' },
+  { folder: 'Ground Floor', file: 'page-009.png', label: '03 / Lounge', title: 'Quiet Comfort', desc: 'Warm seating and curated details invite you to slow down.' },
+  { folder: 'Ground Floor', file: 'page-010.png', label: '03 / Lounge', title: 'Light & Space', desc: 'Natural light and clean architectural lines.' },
+  { folder: 'Ground Floor', file: 'page-016.png', label: '03 / Lounge', title: 'Personal Corner', desc: 'A private moment before your treatment begins.' },
+  { folder: 'Ground Floor', file: 'page-014.png', label: '03 / Lounge', title: 'Consultation', desc: 'A space to plan your look with expert guidance.' },
+
+  { folder: 'Ground Floor', file: 'page-017.png', label: '04 / Hair Salon', title: 'Hair', desc: 'Modern styling stations with precision lighting and elegant mirrors.' },
+  { folder: 'Ground Floor', file: 'page-018.png', label: '04 / Hair Salon', title: 'Style & Color', desc: 'Every detail supports the craft of hairdressing.' },
+  { folder: 'Ground Floor', file: 'page-023.png', label: '04 / Hair Salon', title: 'Hair Color', desc: 'A dedicated space for color transformation.' },
+  { folder: 'Ground Floor', file: 'page-024.png', label: '04 / Hair Salon', title: 'The Palm Room', desc: 'A unique station wrapped in a tropical mural.' },
+  { folder: 'Ground Floor', file: 'page-027.png', label: '04 / Hair Salon', title: 'Wash Station', desc: 'Relax at the basin before the style begins.' },
+
+  { folder: 'Ground Floor', file: 'page-035.png', label: '05 / Moroccan Bath', title: 'Moroccan Bay', desc: 'A sensory spa experience inspired by traditional rituals.' },
+  { folder: 'Ground Floor', file: 'page-037.png', label: '05 / Moroccan Bath', title: 'Green Marble', desc: 'Textures that cool the body and calm the mind.' },
+  { folder: 'Ground Floor', file: 'page-038.png', label: '05 / Moroccan Bath', title: 'Ritual Space', desc: 'Minimal surfaces designed for purification and rest.' },
+  { folder: 'Ground Floor', file: 'page-042.png', label: '05 / Moroccan Bath', title: 'Water Feature', desc: 'The sound of water becomes part of the architecture.' },
+  { folder: 'Ground Floor', file: 'page-044.png', label: '05 / Moroccan Bath', title: 'Massage Bed', desc: 'Complete relaxation in a private treatment setting.' },
+
+  { folder: 'Ground Floor', file: 'page-011.png', label: '06 / Vertical Transition', title: 'Upstairs', desc: 'A vertical transition that builds anticipation for the second floor.' },
+  { folder: 'Second Floor', file: 'page-003.png', label: '06 / Vertical Transition', title: 'Glass Staircase', desc: 'Light, glass, and black railing guide the way up.' },
+  { folder: 'Second Floor', file: 'page-004.png', label: '06 / Vertical Transition', title: 'Landing', desc: 'A quiet pause before the next chapter.' },
+  { folder: 'Second Floor', file: 'page-049.png', label: '06 / Vertical Transition', title: 'Hallway', desc: 'The journey continues through a refined corridor.' },
+
+  { folder: 'Second Floor', file: 'page-014.png', label: '07 / Second Floor Lounge', title: 'Upper Lounge', desc: 'A more private, elevated lounge for second-floor guests.' },
+  { folder: 'Second Floor', file: 'page-016.png', label: '07 / Second Floor Lounge', title: 'Calm & Luxury', desc: 'Soft armchairs and warm light create a waiting experience of its own.' },
+  { folder: 'Second Floor', file: 'page-010.png', label: '07 / Second Floor Lounge', title: 'Soft Seating', desc: 'Intimate corners designed for comfort.' },
+  { folder: 'Second Floor', file: 'page-012.png', label: '07 / Second Floor Lounge', title: 'Gallery Wall', desc: 'Art and architecture merge in the upper floor.' },
+
+  { folder: 'Second Floor', file: 'page-031.png', label: '08 / Beauty Stations', title: 'Beauty Salon', desc: 'Dedicated stations for makeup, glow, and transformation.' },
+  { folder: 'Second Floor', file: 'page-032.png', label: '08 / Beauty Stations', title: 'Vanity Mirrors', desc: 'Green chairs and elegant mirrors define the beauty zone.' },
+  { folder: 'Second Floor', file: 'page-036.png', label: '08 / Beauty Stations', title: 'Personal Stations', desc: 'A layout that balances privacy and openness.' },
+  { folder: 'Second Floor', file: 'page-035.png', label: '08 / Beauty Stations', title: 'Face-to-Face', desc: 'A collaborative space for client and artist.' },
+  { folder: 'Second Floor', file: 'page-034.png', label: '08 / Beauty Stations', title: 'Triptych Mirrors', desc: 'A unique triangular mirror arrangement for 360° detail.' },
+
+  { folder: 'Second Floor', file: 'page-017.png', label: '09 / Nail Bar', title: 'Nail Salon', desc: 'A dedicated nail bar for precision care.' },
+  { folder: 'Second Floor', file: 'page-039.png', label: '09 / Nail Bar', title: 'Nail Bar', desc: 'Wooden counters and soft lighting for a focused service.' },
+  { folder: 'Second Floor', file: 'page-040.png', label: '09 / Nail Bar', title: 'Perfect Details', desc: 'A clean, modern space where every detail matters.' },
+
+  { folder: 'Second Floor', file: 'page-006.png', label: '10 / Bridal Suite', title: 'Bridal Suite', desc: 'A private suite designed for the most special day.' },
+  { folder: 'Second Floor', file: 'page-041.png', label: '10 / Bridal Suite', title: 'Royal Entrance', desc: 'Arched doorways and green carpet set a ceremonial mood.' },
+  { folder: 'Second Floor', file: 'page-043.png', label: '10 / Bridal Suite', title: 'Sacred Space', desc: 'White arches and intricate patterns frame the experience.' },
+
+  { folder: 'NA Beauty Branding', file: 'page-027.png', label: '11 / Final', title: 'Experience NABeauty', desc: 'Every towel, every detail, carries the brand signature.' },
+  { folder: 'NA Beauty Branding', file: 'page-014.png', label: '11 / Final', title: 'Book Your Visit', desc: 'Your journey through NABeauty ends here. Begin your own.' }
+];
+
+const folderMap = {
+  'NA Beauty Branding': encodeURIComponent('NA Beauty Branding'),
+  'Ground Floor': encodeURIComponent('تعديل الدور الارضي ( الكراسي)'),
+  'Second Floor': encodeURIComponent('تعديل الدور الثاني 4')
+};
+
+const slidesContainer = document.getElementById('slides');
+const sceneLabel = document.getElementById('sceneLabel');
+const sceneTitle = document.getElementById('sceneTitle');
+const sceneDesc = document.getElementById('sceneDesc');
+const sceneText = document.getElementById('sceneText');
+const progressBar = document.getElementById('progressBar');
+const ctaFinal = document.getElementById('ctaFinal');
+
+scenes.forEach((s, i) => {
+  const div = document.createElement('div');
+  div.className = 'slide' + (i === 0 ? ' active' : '');
+  div.dataset.index = i;
+  const img = document.createElement('img');
+  img.src = '../processed/' + folderMap[s.folder] + '/' + encodeURIComponent(s.file);
+  img.alt = s.title;
+  div.appendChild(img);
+  slidesContainer.appendChild(div);
+});
+
+function updateScene(index) {
+  const s = scenes[index];
+  sceneLabel.textContent = s.label;
+  sceneTitle.textContent = s.title;
+  sceneDesc.textContent = s.desc;
+
+  document.querySelectorAll('.slide').forEach((slide, i) => {
+    slide.classList.toggle('active', i === index);
+  });
+
+  const isFinal = index >= scenes.length - 2;
+  sceneText.classList.toggle('visible', !isFinal);
+  ctaFinal.classList.toggle('visible', isFinal);
+}
+
+function onScroll() {
+  const container = document.getElementById('scrollContainer');
+  const scrolled = window.scrollY;
+  const maxScroll = container.offsetHeight - window.innerHeight;
+  const progress = Math.max(0, Math.min(1, scrolled / maxScroll));
+  progressBar.style.width = (progress * 100) + '%';
+
+  const index = Math.min(scenes.length - 1, Math.floor(progress * scenes.length));
+  updateScene(index);
+}
+
+window.addEventListener('scroll', onScroll, { passive: true });
+window.addEventListener('resize', onScroll);
+updateScene(0);
+</script>
+</body>
+</html>
